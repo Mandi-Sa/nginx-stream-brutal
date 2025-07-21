@@ -1,0 +1,6 @@
+ngx_module_type=STREAM
+ngx_addon_name=stream_tcp_brutal
+ngx_module_name=ngx_stream_tcp_brutal_module
+ngx_module_srcs="$ngx_addon_dir/ngx_stream_tcp_brutal_module.c"
+
+. auto/module
