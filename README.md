@@ -28,6 +28,8 @@ stream {
 		tcp_brutal on;
 		# Send rate in bytes per second
 		tcp_brutal_rate 1048576;
+		# CWND gain in tenths (10=1.0)
+		tcp_brutal_cwnd_gain 15;
     }
 }
 ```

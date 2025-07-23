@@ -30,6 +30,7 @@ extern ngx_module_t ngx_stream_tcp_brutal_module;
 typedef struct {
 	ngx_flag_t enable;
 	ngx_uint_t rate;
+	ngx_uint_t cwnd_gain;
 } ngx_stream_tcp_brutal_conf_t;
 
 static ngx_int_t ngx_stream_tcp_brutal_handler(ngx_stream_session_t *s);
@@ -53,6 +54,14 @@ static ngx_command_t ngx_stream_tcp_brutal_commands[] = {
 		ngx_conf_set_num_slot,
 		NGX_STREAM_SRV_CONF_OFFSET,
 		offsetof(ngx_stream_tcp_brutal_conf_t, rate),
+		NULL
+	},
+	{
+		ngx_string("tcp_brutal_cwnd_gain"),
+		NGX_STREAM_SRV_CONF | NGX_CONF_TAKE1,
+		ngx_conf_set_num_slot,
+		NGX_STREAM_SRV_CONF_OFFSET,
+		offsetof(ngx_stream_tcp_brutal_conf_t, cwnd_gain),
 		NULL
 	},
 	ngx_null_command
@@ -94,6 +103,7 @@ static void *ngx_stream_tcp_brutal_create_srv_conf(ngx_conf_t *cf)
 
 	conf->enable = NGX_CONF_UNSET;
 	conf->rate = NGX_CONF_UNSET_UINT;
+	conf->cwnd_gain = NGX_CONF_UNSET_UINT;
 
 	return conf;
 }
@@ -106,6 +116,16 @@ static char *ngx_stream_tcp_brutal_merge_srv_conf(ngx_conf_t *cf, void *parent,
 
 	ngx_conf_merge_value(conf->enable, prev->enable, 0);
 	ngx_conf_merge_uint_value(conf->rate, prev->rate, 2);
+	ngx_conf_merge_uint_value(conf->cwnd_gain, prev->cwnd_gain, 15);
+
+	if (conf->cwnd_gain < 5 || conf->cwnd_gain > 80) {
+		ngx_conf_log_error(
+			NGX_LOG_EMERG, cf, 0,
+			"Invalid value \"%ui\" for \"tcp_brutal_cwnd_gain\", "
+			"must be between 5 and 80",
+			conf->cwnd_gain);
+		return NGX_CONF_ERROR;
+	}
 
 	return NGX_CONF_OK;
 }
@@ -141,7 +161,7 @@ static ngx_int_t ngx_stream_tcp_brutal_handler(ngx_stream_session_t *s)
 	/* set brutal-specific parameters */
 	
 	params.rate = conf->rate;
-	params.cwnd_gain = 15;
+	params.cwnd_gain = conf->cwnd_gain;
 
 	/* TCP_BRUTAL_PARAMS = 23301 */
 	if (setsockopt(fd, IPPROTO_TCP, 23301, &params, sizeof(params)) != 0) {
